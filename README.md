@@ -1,4 +1,4 @@
-# AI Video Clipping Bot
+# Ricky Clips
 
 An AI-powered tool that transforms long horizontal videos into viral-ready vertical shorts for TikTok, Instagram Reels, and YouTube Shorts.
 
@@ -217,3 +217,4 @@ Example JSON output:
   ]
 }
 ```
+<img width="622" height="1824" alt="image" src="https://github.com/user-attachments/assets/b990a0d9-7401-400d-b82d-0aa9fc72ee04" />
