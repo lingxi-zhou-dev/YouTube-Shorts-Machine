@@ -4,6 +4,8 @@ An AI-powered tool that transforms long horizontal videos into viral-ready verti
 
 The system uses Google Gemini API to analyze video transcripts and identify the most engaging moments, then generates platform-optimized metadata for each clip.
 
+<img width="622" height="1824" alt="image" src="https://github.com/user-attachments/assets/b990a0d9-7401-400d-b82d-0aa9fc72ee04" />
+
 ## Architecture
 
 ```
@@ -217,4 +219,3 @@ Example JSON output:
   ]
 }
 ```
-<img width="622" height="1824" alt="image" src="https://github.com/user-attachments/assets/b990a0d9-7401-400d-b82d-0aa9fc72ee04" />
