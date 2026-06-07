@@ -16,7 +16,7 @@ load_dotenv()
 
 VIRAL_PROMPT_TEMPLATE = """You are a senior short-form video editor specializing in TikTok, Instagram Reels, and YouTube Shorts.
 
-Analyze the provided transcript and identify 3-15 MOST VIRAL moments suitable for short-form content.
+Analyze the provided transcript and identify 2-6 MOST VIRAL moments suitable for short-form content.
 
 REQUIREMENTS:
 - Each clip must be 15-60 seconds long
@@ -27,22 +27,22 @@ REQUIREMENTS:
 - Focus on: jaw-dropping facts, emotional moments, plot twists, actionable tips, or controversy
 
 VIDEO DURATION: {duration} seconds
-FULL TRANSCRIPT:
+FULL TRANSCRIPT (truncated):
 {transcript}
 
-WORDS WITH TIMESTAMPS:
+WORDS WITH TIMESTAMPS (sample):
 {words}
 
-Return ONLY valid JSON in this exact format (no markdown, no code blocks):
+Return ONLY valid JSON in this exact format (no extra text, no markdown):
 {{
   "shorts": [
     {{
-      "start": 12.340,
-      "end": 37.900,
+      "start": 12.34,
+      "end": 37.90,
       "viral_hook_text": "Did you know this?",
-      "video_title_for_youtube_short": "Shocking Discovery You Need To Know 🤯",
-      "video_description_for_tiktok": "This changed everything 😱 #viral #mindblown #fyp",
-      "video_description_for_instagram": "I can't believe this is real 🔥 Tag someone who needs to see this! #reels #viral"
+      "video_title_for_youtube_short": "Shocking Discovery 🤯",
+      "video_description_for_tiktok": "This changed everything 😱 #viral #fyp",
+      "video_description_for_instagram": "Can't believe this! #reels #viral"
     }}
   ]
 }}
@@ -94,11 +94,11 @@ class ViralDetector:
         # Extract words with timestamps for prompt
         words_data = self._extract_words_from_segments(transcript['segments'])
         
-        # Format the prompt
+        # Format the prompt - use fewer words to reduce token count
         prompt = VIRAL_PROMPT_TEMPLATE.format(
             duration=video_duration,
-            transcript=transcript['text'],
-            words=json.dumps(words_data[:200], indent=2)  # Limit to first 200 words to save tokens
+            transcript=transcript['text'][:2000],  # Limit transcript length
+            words=json.dumps(words_data[:100], indent=2)  # Reduced to 100 words
         )
         
         # Call Gemini API
@@ -108,10 +108,18 @@ class ViralDetector:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.7,
-                    max_output_tokens=4096,  # Increased for longer responses
+                    max_output_tokens=8192,  # Doubled to prevent truncation
                     response_mime_type="application/json",  # Enforce JSON response
                 )
             )
+            
+            # Check if response was truncated
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'finish_reason'):
+                    print(f"Finish reason: {candidate.finish_reason}")
+                    if candidate.finish_reason != 'STOP':
+                        print(f"WARNING: Response may be incomplete. Finish reason: {candidate.finish_reason}")
             
             # Parse response - handle potential candidates
             if hasattr(response, 'candidates') and response.candidates:
@@ -119,17 +127,49 @@ class ViralDetector:
             else:
                 result_text = response.text
             
-            result = json.loads(result_text)
+            print(f"Received response from Gemini API ({len(result_text)} chars)")
             
-            # Validate response structure
-            clips = self._validate_clips(result.get('shorts', []), video_duration)
+            # Try to parse JSON, with repair logic for truncated responses
+            try:
+                result = json.loads(result_text)
+                print("JSON parsed successfully on first try!")
+            except json.JSONDecodeError as e:
+                print(f"Warning: Initial JSON parse failed: {e}")
+                print(f"Response length: {len(result_text)} chars")
+                print(f"Attempting to repair truncated JSON...")
+                
+                # Try to repair the JSON by finding valid portion
+                repaired_text = self._repair_truncated_json(result_text)
+                try:
+                    result = json.loads(repaired_text)
+                    print("Successfully repaired and parsed JSON!")
+                except json.JSONDecodeError as e2:
+                    print(f"Error: JSON repair failed: {e2}")
+                    print(f"Repaired response (first 500 chars): {repaired_text[:500]}...")
+                    print(f"Repaired response (last 500 chars): {repaired_text[-500:]}")
+                    
+                    # Last resort: return empty clips with error message
+                    print("WARNING: Could not parse API response. Returning empty result.")
+                    print("This may be due to API rate limiting or response truncation.")
+                    print("Try again in a few moments or with a shorter video.")
+                    return []
+            
+            # Handle both dict and list formats
+            if isinstance(result, dict):
+                clips = self._validate_clips(result.get('shorts', []), video_duration)
+            elif isinstance(result, list):
+                clips = self._validate_clips(result, video_duration)
+            else:
+                print(f"Error: Unexpected response format: {type(result)}")
+                return []
             
             return clips
             
         except json.JSONDecodeError as e:
             print(f"Error: Failed to parse JSON response from Gemini: {e}")
-            print(f"Response was: {result_text}")
-            raise
+            print(f"This usually indicates the API response was truncated or malformed.")
+            print(f"Try running the detection again or use a shorter video.")
+            return []  # Return empty instead of crashing
         except Exception as e:
             print(f"Error calling Gemini API: {e}")
             raise
@@ -154,6 +194,132 @@ class ViralDetector:
                         'end': word_info.get('end', 0)
                     })
         return words
+    
+    def _repair_truncated_json(self, json_str: str) -> str:
+        """
+        Attempt to repair truncated JSON by finding valid portion.
+        
+        Handles common issues:
+        - Unterminated strings
+        - Missing closing braces/brackets
+        - Truncated in middle of object
+        
+        Args:
+            json_str: Potentially truncated JSON string
+            
+        Returns:
+            Repaired JSON string (best effort)
+        """
+        print(f"Attempting to repair JSON (length: {len(json_str)} chars)")
+        print(f"First 200 chars: {json_str[:200]}")
+        print(f"Last 200 chars: {json_str[-200:]}")
+        
+        # Strategy 1: Try to find the last complete object in an array
+        # Look for pattern: }] or }, followed by more objects
+        # We want to find the last '}' that could close an object in an array
+        
+        # Count opening structures
+        brace_count = 0
+        bracket_count = 0
+        in_string = False
+        escape_next = False
+        
+        # Find positions of complete objects (where } closes an object at array level)
+        complete_object_positions = []
+        
+        for i, char in enumerate(json_str):
+            if escape_next:
+                escape_next = False
+                continue
+                
+            if char == '\\':
+                escape_next = True
+                continue
+                
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+                
+            if in_string:
+                continue
+                
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                # If we're at bracket level 1 and brace level 0, we closed an object in the array
+                if bracket_count == 1 and brace_count == 0:
+                    complete_object_positions.append(i)
+            elif char == '[':
+                bracket_count += 1
+            elif char == ']':
+                bracket_count -= 1
+        
+        # Strategy: Use the last complete object position
+        if complete_object_positions:
+            # Use the last complete object
+            last_obj_pos = complete_object_positions[-1]
+            # Truncate after the closing brace and add closing bracket
+            repaired = json_str[:last_obj_pos + 1] + ']'
+            
+            # If it starts with {, wrap in { "shorts": ... }
+            if repaired.strip().startswith('['):
+                repaired = '{"shorts": ' + repaired + '}'
+            
+            print(f"Repaired: Using last complete object at position {last_obj_pos}")
+            print(f"Repaired JSON (first 200 chars): {repaired[:200]}")
+            print(f"Repaired JSON (last 200 chars): {repaired[-200:]}")
+            return repaired
+        
+        # Strategy 2: If no complete objects found, try more aggressive repair
+        print("No complete objects found, trying aggressive repair...")
+        
+        # Find the last complete JSON value (looking backward)
+        # Remove everything after the last valid complete structure
+        
+        # Reset counters
+        brace_count = 0
+        bracket_count = 0
+        in_string = False
+        escape_next = False
+        last_balanced_pos = -1
+        
+        for i, char in enumerate(json_str):
+            if escape_next:
+                escape_next = False
+                continue
+                
+            if char == '\\':
+                escape_next = True
+                continue
+                
+            if char == '"':
+                in_string = not in_string
+                continue
+                
+            if in_string:
+                continue
+                
+            if char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+            elif char == '[':
+                bracket_count += 1
+            elif char == ']':
+                bracket_count -= 1
+                
+            # Track last position where we're balanced
+            if brace_count == 0 and bracket_count == 0:
+                last_balanced_pos = i
+        
+        if last_balanced_pos > 10:  # At least some content
+            print(f"Using last balanced position: {last_balanced_pos}")
+            return json_str[:last_balanced_pos + 1]
+        
+        # Strategy 3: Nuclear option - just try to return an empty but valid structure
+        print("Cannot repair JSON, returning minimal valid structure")
+        return '{"shorts": []}'
     
     def _validate_clips(
         self, 

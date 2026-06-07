@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricky Clips - AI Video Pipeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #5a4a42;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7a6a62;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .upload-label {
+            display: block;
+            text-align: center;
+            padding: 40px;
+            border: 3px dashed #d4b5a7;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fef9f5;
+        }
+
+        .upload-label:hover {
+            border-color: #b89584;
+            background: #fcf3ec;
+        }
+
+        .upload-label input {
+            display: none;
+        }
+
+        .upload-text {
+            color: #7a6a62;
+            font-size: 1.2rem;
+        }
+
+        .pipeline {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .stage {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #fef9f5;
+            border-radius: 10px;
+            border-left: 5px solid #d4b5a7;
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .stage-title {
+            color: #5a4a42;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .stage-button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .stage-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stage-1 { border-left-color: #b8a9cf; }
+        .stage-1 .stage-button { background: #b8a9cf; }
+        .stage-1 .stage-button:hover:not(:disabled) { background: #9d8bb5; }
+
+        .stage-2 { border-left-color: #a8d5ba; }
+        .stage-2 .stage-button { background: #a8d5ba; }
+        .stage-2 .stage-button:hover:not(:disabled) { background: #8ec1a0; }
+
+        .stage-3 { border-left-color: #ffd3b6; }
+        .stage-3 .stage-button { background: #ffd3b6; }
+        .stage-3 .stage-button:hover:not(:disabled) { background: #ffba8f; }
+
+        .stage-4 { border-left-color: #ffaaa5; }
+        .stage-4 .stage-button { background: #ffaaa5; }
+        .stage-4 .stage-button:hover:not(:disabled) { background: #ff8b85; }
+
+        .stage-5 { border-left-color: #ff8b94; }
+        .stage-5 .stage-button { background: #ff8b94; }
+        .stage-5 .stage-button:hover:not(:disabled) { background: #ff6b75; }
+
+        .stage-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .stage-result.show {
+            display: block;
+        }
+
+        .result-success {
+            color: #4a7c59;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .result-error {
+            color: #c44536;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .result-details {
+            color: #5a4a42;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .clip-preview {
+            background: #f8f4f0;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .clip-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .video-clips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-clip-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .video-clip-card video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+        }
+
+        .clip-title {
+            font-weight: 600;
+            color: #5a4a42;
+            margin: 10px 0 5px 0;
+            font-size: 0.95rem;
+        }
+
+        .clip-hook {
+            color: #7a6a62;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+
+        .clip-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #6b9080;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #557566;
+        }
+
+        .reset-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #c44536;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .reset-btn:hover {
+            background: #a63829;
+        }
+
+        .reset-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ricky Clips</h1>
+        <p class="subtitle">AI-Powered Viral Video Pipeline</p>
+
+        <div class="upload-section">
+            <label class="upload-label" for="videoFile">
+                <div class="upload-text">Click to upload video (MP4, MOV, AVI)</div>
+                <input type="file" id="videoFile" accept="video/*" onchange="uploadVideo()">
+            </label>
+            <div id="uploadStatus"></div>
+            <button class="reset-btn" id="btn-reset" onclick="resetPipeline()" style="display: none;">
+                Reset & Start Over
+            </button>
+        </div>
+
+        <div class="pipeline">
+            <div class="stage stage-1">
+                <div class="stage-header">
+                    <div class="stage-title">1. Transcription</div>
+                    <button class="stage-button" id="btn-stage1" onclick="runStage(1)" disabled>
+                        Run Transcription
+                    </button>
+                </div>
+                <div class="stage-result" id="result-stage1"></div>
+            </div>
+
+            <div class="stage stage-2">
+                <div class="stage-header">
+                    <div class="stage-title">2. Viral Detection</div>
+                    <button class="stage-button" id="btn-stage2" onclick="runStage(2)" disabled>
+                        Detect Clips
+                    </button>
+                </div>
+                <div class="stage-result" id="result-stage2"></div>
+            </div>
+
+            <div class="stage stage-3">
+                <div class="stage-header">
+                    <div class="stage-title">3. Clip Extraction</div>
+                    <button class="stage-button" id="btn-stage3" onclick="runStage(3)" disabled>
+                        Extract Clips
+                    </button>
+                </div>
+                <div class="stage-result" id="result-stage3"></div>
+            </div>
+
+            <div class="stage stage-4">
+                <div class="stage-header">
+                    <div class="stage-title">4. Add Subtitles</div>
+                    <button class="stage-button" id="btn-stage4" onclick="runStage(4)" disabled>
+                        Add Subtitles
+                    </button>
+                </div>
+                <div class="stage-result" id="result-stage4"></div>
+            </div>
+
+            <div class="stage stage-5">
+                <div class="stage-header">
+                    <div class="stage-title">5. Finalize</div>
+                    <button class="stage-button" id="btn-stage5" onclick="runStage(5)" disabled>
+                        Finalize Clips
+                    </button>
+                </div>
+                <div class="stage-result" id="result-stage5"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load saved state on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadState();
+        });
+
+        async function loadState() {
+            try {
+                const response = await fetch('http://localhost:5001/api/state');
+                const state = await response.json();
+
+                if (!state.completed_stages || state.completed_stages.length === 0) {
+                    return;
+                }
+
+                // Show upload status if video exists
+                if (state.current_video) {
+                    const statusDiv = document.getElementById('uploadStatus');
+                    const filename = state.current_video.split('/').pop();
+                    statusDiv.innerHTML = `<p style="color: #4a7c59; margin-top: 15px; font-weight: 600;">Loaded: ${filename}</p>`;
+                    document.getElementById('btn-stage1').disabled = false;
+                    document.getElementById('btn-reset').style.display = 'inline-block';
+                }
+
+                // Restore each completed stage
+                for (const stageNum of state.completed_stages) {
+                    const resultDiv = document.getElementById(`result-stage${stageNum}`);
+                    const data = state.results[`stage${stageNum}`];
+
+                    if (data) {
+                        let html = `<div class="result-success">${data.message}</div>`;
+                        html += '<div class="result-details">';
+
+                        if (data.preview) {
+                            html += `<p><strong>Preview:</strong></p><p style="font-size: 0.9rem;">${data.preview}</p>`;
+                        }
+
+                        if (data.language) {
+                            html += `<p><strong>Language:</strong> ${data.language}</p>`;
+                        }
+
+                        if (data.duration) {
+                            html += `<p><strong>Duration:</strong> ${data.duration.toFixed(1)}s</p>`;
+                        }
+
+                        // Stage 2: Show clip previews
+                        if (data.clips && stageNum === 2) {
+                            html += '<div class="clip-preview"><strong>Clips Found:</strong>';
+                            data.clips.forEach(clip => {
+                                html += `<div class="clip-item">
+                                    <strong>Clip ${clip.number}:</strong> ${clip.hook}<br>
+                                    <small>${clip.start.toFixed(1)}s - ${clip.end.toFixed(1)}s (${clip.duration.toFixed(1)}s)</small>
+                                </div>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        // Stage 5: Show video previews and download buttons
+                        if (data.clips && stageNum === 5) {
+                            html += '<div class="video-clips-grid">';
+                            data.clips.forEach(clip => {
+                                html += `<div class="video-clip-card">
+                                    <video controls preload="metadata">
+                                        <source src="http://localhost:5001${clip.preview_url}" type="video/mp4">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                    <div class="clip-title">${clip.title}</div>
+                                    <div class="clip-hook">${clip.hook}</div>
+                                    <div class="clip-meta">
+                                        <span>${clip.size_mb} MB</span>
+                                        <a href="http://localhost:5001${clip.download_url}" class="download-btn" download>Download</a>
+                                    </div>
+                                </div>`;
+                            });
+                            html += '</div>';
+                        }
+
+                        if (data.num_clips && stageNum !== 5) {
+                            html += `<p><strong>Clips:</strong> ${data.num_clips}</p>`;
+                        }
+
+                        if (data.output_dir) {
+                            html += `<p><strong>Output:</strong> ${data.output_dir}</p>`;
+                        }
+
+                        html += '</div>';
+                        resultDiv.innerHTML = html;
+                        resultDiv.classList.add('show');
+                    }
+
+                    // Enable next stage button
+                    if (stageNum < 5) {
+                        document.getElementById(`btn-stage${stageNum + 1}`).disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.log('No previous state found or error loading state:', error);
+            }
+        }
+
+        async function uploadVideo() {
+            const fileInput = document.getElementById('videoFile');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = '<p style="color: #7a6a62; margin-top: 15px;">Uploading...</p>';
+
+            const formData = new FormData();
+            formData.append('video', file);
+
+            try {
+                const response = await fetch('http://localhost:5001/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    statusDiv.innerHTML = `<p style="color: #4a7c59; margin-top: 15px; font-weight: 600;">${data.message}</p>`;
+                    document.getElementById('btn-stage1').disabled = false;
+                    document.getElementById('btn-reset').style.display = 'inline-block';
+                } else {
+                    statusDiv.innerHTML = `<p style="color: #c44536; margin-top: 15px;">${data.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p style="color: #c44536; margin-top: 15px;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function runStage(stageNum) {
+            const button = document.getElementById(`btn-stage${stageNum}`);
+            const resultDiv = document.getElementById(`result-stage${stageNum}`);
+            
+            button.innerHTML = '<span class="loading"></span> Running...';
+            button.disabled = true;
+            resultDiv.classList.remove('show');
+
+            try {
+                const response = await fetch(`http://localhost:5001/api/stage${stageNum}`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = `<div class="result-success">${data.message}</div>`;
+                    html += '<div class="result-details">';
+                    
+                    if (data.preview) {
+                        html += `<p><strong>Preview:</strong></p><p style="font-size: 0.9rem;">${data.preview}</p>`;
+                    }
+                    
+                    if (data.language) {
+                        html += `<p><strong>Language:</strong> ${data.language}</p>`;
+                    }
+                    
+                    if (data.duration) {
+                        html += `<p><strong>Duration:</strong> ${data.duration.toFixed(1)}s</p>`;
+                    }
+                    
+                    // Stage 2: Show clip previews
+                    if (data.clips && stageNum === 2) {
+                        html += '<div class="clip-preview"><strong>Clips Found:</strong>';
+                        data.clips.forEach(clip => {
+                            html += `<div class="clip-item">
+                                <strong>Clip ${clip.number}:</strong> ${clip.hook}<br>
+                                <small>${clip.start.toFixed(1)}s - ${clip.end.toFixed(1)}s (${clip.duration.toFixed(1)}s)</small>
+                            </div>`;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    // Stage 5: Show video previews and download buttons
+                    if (data.clips && stageNum === 5) {
+                        html += '<div class="video-clips-grid">';
+                        data.clips.forEach(clip => {
+                            html += `<div class="video-clip-card">
+                                <video controls preload="metadata">
+                                    <source src="http://localhost:5001${clip.preview_url}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                                <div class="clip-title">${clip.title}</div>
+                                <div class="clip-hook">${clip.hook}</div>
+                                <div class="clip-meta">
+                                    <span>${clip.size_mb} MB</span>
+                                    <a href="http://localhost:5001${clip.download_url}" class="download-btn" download>Download</a>
+                                </div>
+                            </div>`;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    if (data.num_clips && stageNum !== 5) {
+                        html += `<p><strong>Clips:</strong> ${data.num_clips}</p>`;
+                    }
+                    
+                    if (data.output_dir) {
+                        html += `<p><strong>Output:</strong> ${data.output_dir}</p>`;
+                    }
+                    
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                    resultDiv.classList.add('show');
+
+                    // Enable next stage
+                    if (stageNum < 5) {
+                        document.getElementById(`btn-stage${stageNum + 1}`).disabled = false;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div class="result-error">Error: ${data.error}</div>`;
+                    resultDiv.classList.add('show');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-error">Error: ${error.message}</div>`;
+                resultDiv.classList.add('show');
+            }
+
+            button.innerHTML = button.textContent.replace('Running...', `Run ${getStageName(stageNum)}`);
+        }
+
+        async function resetPipeline() {
+            if (!confirm('Are you sure? This will delete all processed clips and reset the pipeline.')) {
+                return;
+            }
+
+            const resetBtn = document.getElementById('btn-reset');
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Resetting...';
+
+            try {
+                const response = await fetch('http://localhost:5001/api/reset', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Clear upload status
+                    document.getElementById('uploadStatus').innerHTML = '';
+                    document.getElementById('videoFile').value = '';
+                    
+                    // Hide reset button
+                    resetBtn.style.display = 'none';
+                    
+                    // Reset all stage buttons
+                    for (let i = 1; i <= 5; i++) {
+                        document.getElementById(`btn-stage${i}`).disabled = true;
+                        const resultDiv = document.getElementById(`result-stage${i}`);
+                        resultDiv.innerHTML = '';
+                        resultDiv.classList.remove('show');
+                    }
+                    
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Reset & Start Over';
+            }
+        }
+
+        function getStageName(num) {
+            const names = ['', 'Transcription', 'Detection', 'Extraction', 'Subtitles', 'Finalization'];
+            return names[num];
+        }
+    </script>
+</body>
+</html>

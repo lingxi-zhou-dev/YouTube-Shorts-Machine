@@ -1,0 +1,12 @@
+{
+  "current_video": "outputs/ninjacreami.mp4",
+  "transcript_file": "outputs/ninjacreami_transcript.json",
+  "clips_json": "outputs/ninjacreami_viral_clips.json",
+  "completed_stages": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

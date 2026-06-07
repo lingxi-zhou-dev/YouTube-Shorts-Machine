@@ -61,34 +61,48 @@ echo "GEMINI_API_KEY=your_key_here" > .env
 
 Get a free API key at: https://aistudio.google.com/app/apikey
 
-Prerequisites: Python 3.8+, FFmpeg in PATH
+**Prerequisites:** 
+- Python 3.9+
+- FFmpeg with libass support (`brew install ffmpeg-full`)
 
-## Quick Start (Web UI)
+## Quick Start (Web Interface)
 
-**Easiest way to use:** Run the web interface for a simple drag-and-drop experience.
+**Simple 5-stage pipeline interface** - Upload a video and process it step-by-step through each stage.
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Launch web interface
-python3 app.py
+# Start the server
+python3 server.py
 ```
 
-Then open your browser to `http://localhost:7860`
+Then open your browser to `http://localhost:5001`
 
-1. Upload your video
-2. Enter your Gemini API key
-3. Click "Generate Viral Clips"
-4. Download your clips!
+### Features:
+- **Drag & Drop Upload** - Upload your video file
+- **5-Stage Pipeline** - Execute each stage with one click:
+  1. **Transcription** - Generate word-level timestamps
+  2. **Viral Detection** - AI finds engaging moments  
+  3. **Clip Extraction** - Extract and convert to vertical
+  4. **Add Subtitles** - TikTok-style captions
+  5. **Finalize** - Final clips ready for upload
+- **Live Results** - See output from each stage immediately
+- **Pastel Design** - Clean, easy-to-use interface
 
-**Note:** Processing takes 5-15 minutes depending on video length.
+### Workflow:
+1. Upload video (MP4, MOV, or AVI)
+2. Click each stage button in order
+3. View results after each stage completes
+4. Find your final clips in `outputs/final/`
+
+**Note:** Make sure your Gemini API key is set in `.env` file before running!
 
 ---
 
 ## Advanced Usage (Command Line)
 
-For more control, use the command-line tools below:
+For more control or automation, use the command-line tools:
 
 ## Commands
 
