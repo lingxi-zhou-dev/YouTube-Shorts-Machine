@@ -13,33 +13,33 @@ Long Video Input
     |
     v
 +-------------------------------+
-| 1. Transcription              | COMPLETE
+| 1. Transcription              |
 |    (faster-whisper)           | word-level timestamps
 +-------------------------------+
     |
     v
 +-------------------------------+
-| 2. AI Viral Detection         | COMPLETE
+| 2. AI Viral Detection         |
 |    (Google Gemini API)        | identifies 3-15 clips (15-60s)
 |                               | generates hooks & metadata
 +-------------------------------+
     |
     v
 +-------------------------------+
-| 3. Clip Extraction            | COMPLETE
+| 3. Clip Extraction            |
 |    (FFmpeg)                   | precise timestamp cutting
 |                               | + vertical conversion (optional)
 +-------------------------------+
     |
     v
 +-------------------------------+
-| 4. Subtitle Generation        | COMPLETE
+| 4. Subtitle Generation        | 
 |    (SRT/ASS from timestamps)  | TikTok-style captions
 +-------------------------------+
     |
     v
 +-------------------------------+
-| 5. AI Effects                 | COMPLETE
+| 5. AI Effects                 |
 |    (Gemini + FFmpeg filters)  | dynamic zooms, enhancements
 +-------------------------------+
     |
