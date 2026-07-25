@@ -1,221 +1,82 @@
 # Ricky Clips
 
-An AI-powered tool that transforms long horizontal videos into viral-ready vertical shorts for TikTok, Instagram Reels, and YouTube Shorts.
+Ricky Clips is an AI-powered application that automatically turns long-form videos into short, vertical clips for TikTok, Instagram Reels, and YouTube Shorts.
 
-The system uses Google Gemini API to analyze video transcripts and identify the most engaging moments, then generates platform-optimized metadata for each clip.
+The application uses Google Gemini to identify the most engaging moments in a video, then automatically extracts clips, generates subtitles, applies AI enhancements, and exports content ready for social media.
 
 <img width="622" height="1824" alt="image" src="https://github.com/user-attachments/assets/b990a0d9-7401-400d-b82d-0aa9fc72ee04" />
 
-## Architecture
+## Features
 
-```
-Long Video Input
-    |
-    v
-+-------------------------------+
-| 1. Transcription              |
-|    (faster-whisper)           | word-level timestamps
-+-------------------------------+
-    |
-    v
-+-------------------------------+
-| 2. AI Viral Detection         |
-|    (Google Gemini API)        | identifies 3-15 clips (15-60s)
-|                               | generates hooks & metadata
-+-------------------------------+
-    |
-    v
-+-------------------------------+
-| 3. Clip Extraction            |
-|    (FFmpeg)                   | precise timestamp cutting
-|                               | + vertical conversion (optional)
-+-------------------------------+
-    |
-    v
-+-------------------------------+
-| 4. Subtitle Generation        | 
-|    (SRT/ASS from timestamps)  | TikTok-style captions
-+-------------------------------+
-    |
-    v
-+-------------------------------+
-| 5. AI Effects                 |
-|    (Gemini + FFmpeg filters)  | dynamic zooms, enhancements
-+-------------------------------+
-    |
-    v
-Multiple Viral Clips Ready to Post
-```
+- AI-powered viral clip detection
+- Automatic video transcription
+- Vertical (9:16) clip generation
+- TikTok-style subtitles
+- AI-generated video effects
+- YouTube Shorts, TikTok, and Instagram metadata
 
-## Setup
+## Requirements
+
+- Python 3.9+
+- FFmpeg
+- Google Gemini API Key
+
+## Installation
 
 ```bash
-# Clone and install dependencies
 git clone <repository-url>
 cd "AI Video Clipping Bot"
+
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 
-# Configure Google Gemini API key (free tier available)
-echo "GEMINI_API_KEY=your_key_here" > .env
+pip install -r requirements.txt
 ```
 
-Get a free API key at: https://aistudio.google.com/app/apikey
+Create a `.env` file:
 
-**Prerequisites:** 
-- Python 3.9+
-- FFmpeg with libass support (`brew install ffmpeg-full`)
+```text
+GEMINI_API_KEY=your_api_key
+```
 
-## Quick Start (Web Interface)
+## Usage
 
-**Simple 5-stage pipeline interface** - Upload a video and process it step-by-step through each stage.
+Start the web application:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Start the server
 python3 server.py
 ```
 
-Then open your browser to `http://localhost:5001`
+Open your browser:
 
-### Features:
-- **Drag & Drop Upload** - Upload your video file
-- **5-Stage Pipeline** - Execute each stage with one click:
-  1. **Transcription** - Generate word-level timestamps
-  2. **Viral Detection** - AI finds engaging moments  
-  3. **Clip Extraction** - Extract and convert to vertical
-  4. **Add Subtitles** - TikTok-style captions
-  5. **Finalize** - Final clips ready for upload
-- **Live Results** - See output from each stage immediately
-- **Pastel Design** - Clean, easy-to-use interface
-
-### Workflow:
-1. Upload video (MP4, MOV, or AVI)
-2. Click each stage button in order
-3. View results after each stage completes
-4. Find your final clips in `outputs/final/`
-
-**Note:** Make sure your Gemini API key is set in `.env` file before running!
-
----
-
-## Advanced Usage (Command Line)
-
-For more control or automation, use the command-line tools:
-
-## Commands
-
-### Viral Moment Detection
-
-```bash
-# Detect viral moments from a video
-python3 viral_detector.py video.mp4
-
-# Output: video_viral_clips.json with timestamps and metadata
+```
+http://localhost:5001
 ```
 
-### Clip Extraction
+### Workflow
 
-```bash
-# Extract all viral clips from JSON (horizontal format)
-python3 clip_extractor.py video.mp4 video_viral_clips.json
+1. Upload a video.
+2. Generate the transcript.
+3. Detect viral moments with AI.
+4. Extract clips and convert them to vertical format.
+5. Add subtitles.
+6. Apply AI enhancements.
+7. Download the finished clips from:
 
-# Extract and convert to vertical format (9:16) - RECOMMENDED
-python3 clip_extractor.py video.mp4 video_viral_clips.json --vertical
-
-# Custom output directory and quality
-python3 clip_extractor.py video.mp4 clips.json -o output_clips -q high --vertical
-
-# Extract single clip manually
-python3 clip_extractor.py video.mp4 -s 10.5 -e 35.2 -o clip.mp4
+```
+outputs/final/
 ```
 
-### Subtitle Generation
+## Project Structure
 
-```bash
-# Add TikTok-style subtitles to a clip
-python3 subtitle_generator.py clip.mp4 transcript.json
-
-# Specify time range
-python3 subtitle_generator.py clip.mp4 transcript.json -s 10.5 -e 68.7
-
-# Custom output and styling
-python3 subtitle_generator.py clip.mp4 transcript.json -o subtitled.mp4 --style tiktok --position bottom
-
-# Advanced options
-python3 subtitle_generator.py clip.mp4 transcript.json --max-chars 25 --max-duration 2.5
 ```
+server.py               # Web application
+transcribe.py           # Speech-to-text transcription
+viral_detector.py       # AI viral clip detection
+clip_extractor.py       # Clip extraction & vertical conversion
+subtitle_generator.py   # Subtitle generation
+ai_effects.py           # AI video enhancements
 
-Note: Requires FFmpeg with libass support. Install with: `brew install ffmpeg-full`
-
-### AI Effects
-
-```bash
-# Add AI-generated effects to a single clip
-python3 ai_effects.py clip.mp4 transcript.json -o enhanced.mp4
-
-# Batch process from viral detection JSON
-python3 ai_effects.py --batch viral_clips.json --transcript transcript.json -o effects/
-
-# Dry run (validate filters without applying)
-python3 ai_effects.py clip.mp4 transcript.json --dry-run
-
-# Specify time range for context
-python3 ai_effects.py clip.mp4 transcript.json -s 10.5 -e 68.7 -o enhanced.mp4
-```
-
-Note: AI Effects requires active Gemini API key. Effects include contextual zooms and color grading based on video content.
-
-### Transcription
-
-```bash
-# Generate transcript with word-level timestamps
-python3 transcribe.py video.mp4 output.json
-
-# Choose model size (tiny, base, small, medium, large)
-python3 transcribe.py video.mp4 output.json --model base
-```
-
-### Vertical Video Conversion (Legacy Feature)
-
-```bash
-# Convert horizontal to vertical (9:16)
-python3 main.py -i video.mp4 -o vertical.mp4
-
-# Custom aspect ratio
-python3 main.py -i video.mp4 -o vertical.mp4 --ratio 4:5
-
-# Quality presets: fast, balanced, high
-python3 main.py -i video.mp4 -o vertical.mp4 --quality high
-
-# Hardware encoding
-python3 main.py -i video.mp4 -o vertical.mp4 --encoder hw
-```
-
-## Output Format
-
-Each detected viral clip includes:
-- Precise start/end timestamps
-- Viral hook text (max 10 words for overlay)
-- YouTube Shorts optimized title
-- TikTok description with hashtags
-- Instagram Reels description with hashtags
-
-Example JSON output:
-```json
-{
-  "clips": [
-    {
-      "start": 106.02,
-      "end": 138.74,
-      "viral_hook_text": "Keto beats Ozempic for hunger?",
-      "video_title_for_youtube_short": "Keto vs Ozempic: The ULTIMATE Hunger Hormone Showdown!",
-      "video_description_for_tiktok": "Keto naturally boosts GLP1 and silences hunger...",
-      "video_description_for_instagram": "Learn how keto naturally fixes your hunger..."
-    }
-  ]
-}
+outputs/
+    final/              # Finished clips
 ```
